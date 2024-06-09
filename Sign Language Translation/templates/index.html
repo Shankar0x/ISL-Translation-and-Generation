@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 1 - Sign Language Generation</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+        }
+
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin-top: 50px;
+            align-items: center;
+        }
+
+        .header_text{
+            display: flex;
+            width: 90%;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 10px 20px;
+            border-bottom: 3px solid black;
+            margin-left: 50px;
+            margin-right: 50px;
+        }
+        /* Loading spinner animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #loadingSpinner {
+            margin-top: 40px;
+            display: none;
+            border: 6px solid #ececec; /* Light grey */
+            border-top: 6px solid #424242; /* Blue */
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite; /* Apply animation */
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="header_text">
+            <h1 style = "color: black; font-family: Kanit; font-size: 40px;">Module 1 &nbsp; | &nbsp; Sign Video to Sign Language Sentences Generation</h1>
+        </div>
+        
+        <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: center;">
+            <div style="border: 2px dashed black; width: 200px; height: 200px; margin-right: 20px;">
+            </div>
+            <div>
+                <form style="padding-top: 30px;" id="uploadForm" enctype="multipart/form-data">
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="videoInput" name="video" onchange="updateFileName()">
+                        <label class="custom-file-label" for="videoInput" id="fileLabel">Choose file</label>
+                    </div>
+                    <div style="text-align: left; padding-top: 10px;">
+                        <button type="submit" class="btn btn-secondary">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        
+        
+        <div id="message"></div>
+
+        <!-- <video id="videoPlayer" controls style="display: none;margin-top:20px">
+            Your browser does not support the video tag.
+        </video> -->
+
+        <button id="predictButton" class="btn btn-secondary" style="display: none; margin-top: 20px">Predict</button>
+
+        <!-- Loading spinner -->
+        <div id="loadingSpinner"></div>
+
+        <!-- Paragraph tag to display prediction result -->
+        <p id="predictionResult" style="display: none;margin-top: 20px;"></p>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        // Function to update file name label
+        function updateFileName() {
+            var fileInput = document.getElementById('videoInput');
+            var fileLabel = document.getElementById('fileLabel');
+            if (fileInput.files.length > 0) {
+                fileLabel.textContent = fileInput.files[0].name;
+            } else {
+                fileLabel.textContent = 'Choose file';
+            }
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // document.getElementById('message').innerHTML = '<p>Uploaded file: ' + data.filename + '</p>';
+                    var videoPlayer = document.getElementById('videoPlayer');
+                    videoPlayer.style.display = 'block';
+                    videoPlayer.style.width = '500px';
+                    videoPlayer.src = '/play/' + encodeURIComponent(data.filename);
+                    // My keypoints will be saved in this folder
+                    var keypoints_path = data.keypoints_folder;
+                    var total_frames = data.frames_count;
+                    // Show the predict button after successful upload
+                    document.getElementById('predictButton').style.display = 'block';
+                } else {
+                    document.getElementById('message').innerHTML = '<p>Error: ' + data.error + '</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('message').innerHTML = '<p>An error occurred while uploading the video.</p>';
+            });
+        });
+
+        // Add event listener for the predict button
+        document.getElementById('predictButton').addEventListener('click', function() {
+            // Display loading spinner
+            document.getElementById('loadingSpinner').style.display = 'block';
+
+            fetch('/process', {
+                method: 'POST',
+                body: new FormData(document.getElementById('uploadForm'))
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Prediction result:', data);
+                // Hide loading spinner
+                document.getElementById('loadingSpinner').style.display = 'none';
+
+                // Display the prediction result in paragraph tag
+                var predictionResult = document.getElementById('predictionResult');
+                predictionResult.style.display = 'block';
+                predictionResult.textContent = 'Prediction result: ' + data.prediction;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing the data.');
+            });
+        });
+    </script>
+</body>
+</html>
